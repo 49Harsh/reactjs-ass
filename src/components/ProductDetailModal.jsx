@@ -1,17 +1,15 @@
 import { useState } from 'react';
-import { useProduct, useUpdateProduct, useDeleteProduct } from '../hooks/useProducts';
+import { useProducts } from '../context/ProductsContext';
 import { formatCurrency } from '../utils/helpers';
-import LoadingSpinner from './LoadingSpinner';
-import ErrorMessage from './ErrorMessage';
 
 const ProductDetailModal = ({ productId, onClose }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  const { data: product, isLoading, error, refetch } = useProduct(productId);
-  const updateMutation = useUpdateProduct();
-  const deleteMutation = useDeleteProduct();
+  const { getProductById, updateProduct, deleteProduct } = useProducts();
+  const product = getProductById(productId);
 
   const handleEdit = () => {
     setFormData({
@@ -25,26 +23,36 @@ const ProductDetailModal = ({ productId, onClose }) => {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
-      await updateMutation.mutateAsync({
-        id: productId,
-        data: formData,
-      });
-      setIsEditing(false);
-      // Show success message (you could add a toast notification here)
-      alert('Product updated successfully!');
-    } catch (error) {
+      const result = await updateProduct(productId, formData);
+      if (result.success) {
+        setIsEditing(false);
+        alert('Product updated successfully!');
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err) {
       alert('Failed to update product. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDelete = async () => {
+    setLoading(true);
     try {
-      await deleteMutation.mutateAsync(productId);
-      alert('Product deleted successfully!');
-      onClose();
-    } catch (error) {
+      const result = await deleteProduct(productId);
+      if (result.success) {
+        alert('Product deleted successfully!');
+        onClose();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err) {
       alert('Failed to delete product. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -54,24 +62,16 @@ const ProductDetailModal = ({ productId, onClose }) => {
     }
   };
 
-  if (isLoading) {
+  if (!product) {
     return (
       <div className="modal-backdrop" onClick={handleBackdropClick}>
         <div className="modal-content">
-          <LoadingSpinner size="lg" />
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="modal-backdrop" onClick={handleBackdropClick}>
-        <div className="modal-content">
-          <ErrorMessage message={error.message} onRetry={refetch} />
-          <button onClick={onClose} className="btn-secondary mt-4 w-full">
-            Close
-          </button>
+          <div className="glass rounded-2xl p-8 text-center">
+            <p className="text-slate-600 dark:text-slate-400">Product not found</p>
+            <button onClick={onClose} className="btn-secondary mt-4">
+              Close
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -268,10 +268,10 @@ const ProductDetailModal = ({ productId, onClose }) => {
             <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
               <button
                 type="submit"
-                disabled={updateMutation.isPending}
+                disabled={loading}
                 className="btn-primary flex-1"
               >
-                {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                {loading ? 'Saving...' : 'Save Changes'}
               </button>
               <button
                 type="button"
@@ -314,10 +314,10 @@ const ProductDetailModal = ({ productId, onClose }) => {
               <div className="flex gap-3">
                 <button
                   onClick={handleDelete}
-                  disabled={deleteMutation.isPending}
+                  disabled={loading}
                   className="btn-danger flex-1"
                 >
-                  {deleteMutation.isPending ? 'Deleting...' : 'Yes, Delete'}
+                  {loading ? 'Deleting...' : 'Yes, Delete'}
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(false)}

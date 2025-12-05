@@ -1,12 +1,10 @@
 import { useState, useMemo } from 'react';
-import { useProducts, useCategories } from '../hooks/useProducts';
+import { useProducts } from '../context/ProductsContext';
 import { debounce } from '../utils/helpers';
 import { ITEMS_PER_PAGE } from '../constants';
 import Header from '../components/Header';
 import ProductCard from '../components/ProductCard';
 import ProductDetailModal from '../components/ProductDetailModal';
-import SkeletonGrid from '../components/SkeletonGrid';
-import ErrorMessage from '../components/ErrorMessage';
 
 const ProductsPage = () => {
   const [selectedProductId, setSelectedProductId] = useState(null);
@@ -14,8 +12,7 @@ const ProductsPage = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
 
-  const { data: products, isLoading, error, refetch } = useProducts();
-  const { data: categories } = useCategories();
+  const { products, categories, loading, error, fetchProducts } = useProducts();
 
   // Filter and search products
   const filteredProducts = useMemo(() => {
@@ -73,7 +70,30 @@ const ProductsPage = () => {
       <div className="min-h-screen">
         <Header />
         <div className="container mx-auto px-4 py-8">
-          <ErrorMessage message={error.message} onRetry={refetch} />
+          <div className="glass rounded-2xl p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+              Error Loading Products
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">{error}</p>
+            <button onClick={fetchProducts} className="btn-primary">
+              Try Again
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -162,8 +182,11 @@ const ProductsPage = () => {
         </div>
 
         {/* Products Grid */}
-        {isLoading ? (
-          <SkeletonGrid count={ITEMS_PER_PAGE} />
+        {loading ? (
+          <div className="glass rounded-2xl p-12 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            <p className="text-slate-600 dark:text-slate-400 font-semibold">Loading products...</p>
+          </div>
         ) : filteredProducts.length === 0 ? (
           <div className="glass rounded-2xl p-12 text-center">
             <div className="w-20 h-20 mx-auto mb-4 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center">
